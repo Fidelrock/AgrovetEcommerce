@@ -19,6 +19,9 @@ public class Product : BaseEntity
 
     // Navigation
     public Category Category { get; private set; }
+    
+    private readonly List<ProductMedia> _media = new();
+    public IReadOnlyCollection<ProductMedia> Media => _media.AsReadOnly();
 
     private Product() { } // EF Core
 

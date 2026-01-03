@@ -1,17 +1,57 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Agrovet.Domain.Common;
 
-namespace Agrovet.Domain.Entities
+namespace Agrovet.Domain.Entities;
+
+public class Order : BaseEntity
 {
-    public class Order
+    public decimal TotalAmount { get; private set; }
+    public string Status { get; private set; } = "Pending";
+
+    private readonly List<OrderItem> _items = new();
+    public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    private Order() { }
+
+    public void AddItem(OrderItem item)
     {
-        public int Id { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public decimal TotalAmount { get; set; }
-        public string Status { get; set; } = "Pending";
-        public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
+
+        _items.Add(item);
+        RecalculateTotal();
+        MarkUpdated();
+    }
+
+    public void RemoveItem(OrderItem item)
+    {
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
+
+        _items.Remove(item);
+        RecalculateTotal();
+        MarkUpdated();
+    }
+
+    public void MarkAsShipped()
+    {
+        Status = "Shipped";
+        MarkUpdated();
+    }
+
+    public void MarkAsDelivered()
+    {
+        Status = "Delivered";
+        MarkUpdated();
+    }
+
+    public void MarkAsCancelled()
+    {
+        Status = "Cancelled";
+        MarkUpdated();
+    }
+
+    private void RecalculateTotal()
+    {
+        TotalAmount = _items.Sum(item => item.UnitPrice * item.Quantity);
     }
 }

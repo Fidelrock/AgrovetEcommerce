@@ -14,9 +14,12 @@ public class AgrovetDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<ProductMedia> productMedia => Set<ProductMedia>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AgrovetDbContext).Assembly);
+
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<Category>()

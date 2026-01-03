@@ -1,4 +1,7 @@
+using Agrovet.Application.Interfaces.Repositories;
 using Agrovet.Infrastructure.Data;
+using Agrovet.Infrastructure.Data.Seed;
+using Agrovet.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -37,6 +40,9 @@ try
         options.UseSqlite("Data Source=agrovet.db");
     });
 
+    builder.Services.AddScoped<IProductRepository, ProductRepository>();
+    builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -66,12 +72,22 @@ try
     app.UseAuthorization();
     app.MapControllers();
 
-    // Ensure database is created
+    // Apply migrations
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<AgrovetDbContext>();
-        db.Database.EnsureCreated();
-        Log.Information("Database initialization completed");
+        db.Database.Migrate();
+        Log.Information("Database migrations completed");
+        
+        try
+        {
+            await DbSeeder.SeedAsync(db);
+            Log.Information("Database seeding completed");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error seeding database");
+        }
     }
 
     app.Run();

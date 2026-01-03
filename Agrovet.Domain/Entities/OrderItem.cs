@@ -1,18 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Agrovet.Domain.Common;
 
-namespace Agrovet.Domain.Entities
+namespace Agrovet.Domain.Entities;
+
+public class OrderItem : BaseEntity
 {
-    public class OrderItem
-    {
-        public int Id { get; set; }
+    public Guid ProductId { get; private set; }
+    public Product Product { get; private set; }
+    
+    public int Quantity { get; private set; }
+    public decimal UnitPrice { get; private set; }
 
-        public int ProductId { get; set; }
-        public Product? Product { get; set; }
-        public int Quantity { get; set; }
-        public decimal UnitPrice { get; set; }
+    private OrderItem() { }
+
+    public OrderItem(Guid productId, int quantity, decimal unitPrice)
+    {
+        ProductId = productId;
+        Quantity = quantity;
+        UnitPrice = unitPrice;
+    }
+
+    public void UpdateQuantity(int newQuantity)
+    {
+        if (newQuantity <= 0)
+            throw new ArgumentException("Quantity must be greater than zero.");
+
+        Quantity = newQuantity;
+        MarkUpdated();
     }
 }

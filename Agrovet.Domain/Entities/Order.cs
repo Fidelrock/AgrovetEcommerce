@@ -1,57 +1,78 @@
 ﻿using Agrovet.Domain.Common;
+using Agrovet.Domain.Enums;
 
 namespace Agrovet.Domain.Entities;
 
 public class Order : BaseEntity
 {
+    public Guid CustomerId { get; private set; }
     public decimal TotalAmount { get; private set; }
-    public string Status { get; private set; } = "Pending";
+    public OrderStatus Status { get; private set; } = OrderStatus.Pending;
 
     private readonly List<OrderItem> _items = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
 
-    private Order() { }
+    private Order() { } // EF Core
 
-    public void AddItem(OrderItem item)
+    public Order(Guid customerId)
     {
-        if (item == null)
-            throw new ArgumentNullException(nameof(item));
+        CustomerId = customerId;
+        Status = OrderStatus.Pending;
+    }
 
+    public void AddItem(Guid productId, decimal unitPrice, int quantity)
+    {
+        if (Status != OrderStatus.Pending)
+            throw new InvalidOperationException("Cannot modify order in its current state.");
+
+        var item = new OrderItem(Id,productId, quantity, unitPrice);
         _items.Add(item);
+
         RecalculateTotal();
         MarkUpdated();
     }
 
-    public void RemoveItem(OrderItem item)
+    public void Confirm()
     {
-        if (item == null)
-            throw new ArgumentNullException(nameof(item));
+        if (Status != OrderStatus.Pending)
+            throw new InvalidOperationException("Only pending orders can be confirmed.");
 
-        _items.Remove(item);
-        RecalculateTotal();
+        if (!_items.Any())
+            throw new InvalidOperationException("Order cannot be empty.");
+
+        Status = OrderStatus.Confirmed;
         MarkUpdated();
     }
 
-    public void MarkAsShipped()
+    public void Ship()
     {
-        Status = "Shipped";
+        if (Status != OrderStatus.Confirmed)
+            throw new InvalidOperationException("Only confirmed orders can be shipped.");
+
+        Status = OrderStatus.Shipped;
         MarkUpdated();
     }
 
-    public void MarkAsDelivered()
+    public void Deliver()
     {
-        Status = "Delivered";
+        if (Status != OrderStatus.Shipped)
+            throw new InvalidOperationException("Only shipped orders can be delivered.");
+
+        Status = OrderStatus.Delivered;
         MarkUpdated();
     }
 
-    public void MarkAsCancelled()
+    public void Cancel()
     {
-        Status = "Cancelled";
+        if (Status == OrderStatus.Delivered)
+            throw new InvalidOperationException("Delivered orders cannot be cancelled.");
+
+        Status = OrderStatus.Cancelled;
         MarkUpdated();
     }
 
     private void RecalculateTotal()
     {
-        TotalAmount = _items.Sum(item => item.UnitPrice * item.Quantity);
+        TotalAmount = _items.Sum(i => i.UnitPrice * i.Quantity);
     }
 }

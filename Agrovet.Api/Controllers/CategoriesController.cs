@@ -1,61 +1,55 @@
-﻿using Agrovet.Infrastructure.Data;
+﻿using Agrovet.Api.Contracts.Categories;
+using Agrovet.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Agrovet.Api.Controllers
+namespace Agrovet.Api.Controllers;
+
+[ApiController]
+[Route("api/categories")]
+public class CategoriesController : ControllerBase
 {
-    [ApiController]
-    [Route("api/categories")]
-    public class CategoriesController : ControllerBase
+    private readonly AgrovetDbContext _context;
+
+    public CategoriesController(AgrovetDbContext context)
     {
-        private readonly AgrovetDbContext _context;
+        _context = context;
+    }
 
-        public CategoriesController(AgrovetDbContext context)
-        {
-            _context = context;
-        }
+    [HttpGet]
+    public async Task<IActionResult> GetTree()
+    {
+        var categories = await _context.Categories
+            .AsNoTracking()
+            .Where(c => c.ParentCategoryId == null)
+            .Include(c => c.Children)
+            .ToListAsync();
 
-        [HttpGet("tree")]
-        public async Task<IActionResult> GetTree()
-        {
-            var categories = await _context.Categories
-                .AsNoTracking()
-                .ToListAsync();
+        var result = categories.Select(MapCategory).ToList();
+        return Ok(result);
+    }
 
-            var lookup = categories.ToLookup(c => c.ParentCategoryId);
+    [HttpGet("{slug}")]
+    public async Task<IActionResult> GetBySlug(string slug)
+    {
+        var category = await _context.Categories
+            .AsNoTracking()
+            .Include(c => c.Children)
+            .FirstOrDefaultAsync(c => c.Slug == slug);
 
-            List<CategoryTreeDto> BuildTree(Guid? parentId)
-            {
-                return lookup[parentId]
-                    .Select(c => new CategoryTreeDto
-                    {
-                        Id = c.Id,
-                        Name = c.Name,
-                        Slug = c.Slug,
-                        Children = BuildTree(c.Id)
-                    })
-                    .ToList();
-            }
+        if (category == null)
+            return NotFound();
 
-            return Ok(BuildTree(null));
-        }
+        return Ok(MapCategory(category));
+    }
 
-        [HttpGet("{slug}")]
-        public async Task<IActionResult> GetBySlug(string slug)
-        {
-            var category = await _context.Categories
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Slug == slug);
-
-            if (category is null)
-                return NotFound();
-
-            return Ok(new CategoryDetailsDto
-            {
-                Id = category.Id,
-                Name = category.Name,
-                Slug = category.Slug
-            });
-        }
+    private static CategoryDto MapCategory(Domain.Entities.Category category)
+    {
+        return new CategoryDto(
+            category.Id,
+            category.Name,
+            category.Slug,
+            category.Children.Select(MapCategory).ToList()
+        );
     }
 }

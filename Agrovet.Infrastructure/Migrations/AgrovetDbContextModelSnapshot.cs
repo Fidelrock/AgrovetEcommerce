@@ -61,13 +61,15 @@ namespace Agrovet.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
+                    b.Property<int>("Status")
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
@@ -93,7 +95,7 @@ namespace Agrovet.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid?>("OrderId")
+                    b.Property<Guid>("OrderId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ProductId")
@@ -200,7 +202,7 @@ namespace Agrovet.Infrastructure.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("productMedia");
+                    b.ToTable("ProductMedia");
                 });
 
             modelBuilder.Entity("Agrovet.Domain.Entities.Category", b =>
@@ -214,16 +216,19 @@ namespace Agrovet.Infrastructure.Migrations
 
             modelBuilder.Entity("Agrovet.Domain.Entities.OrderItem", b =>
                 {
-                    b.HasOne("Agrovet.Domain.Entities.Order", null)
+                    b.HasOne("Agrovet.Domain.Entities.Order", "Order")
                         .WithMany("Items")
                         .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Agrovet.Domain.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Order");
 
                     b.Navigation("Product");
                 });

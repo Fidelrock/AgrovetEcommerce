@@ -14,7 +14,7 @@ public class AgrovetDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
-    public DbSet<ProductMedia> productMedia => Set<ProductMedia>();
+    public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,14 +22,22 @@ public class AgrovetDbContext : DbContext
 
         base.OnModelCreating(modelBuilder);
 
+        // Category → Products
         modelBuilder.Entity<Category>()
             .HasMany(c => c.Products)
             .WithOne(p => p.Category!)
             .HasForeignKey(p => p.CategoryId);
 
+        // Order → OrderItems (Aggregate Root)
         modelBuilder.Entity<Order>()
             .HasMany(o => o.Items)
-            .WithOne()
+            .WithOne(oi => oi.Order)
+            .HasForeignKey(oi => oi.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Enum persistence (explicit, clean)
+        modelBuilder.Entity<Order>()
+            .Property(o => o.Status)
+            .HasConversion<int>();
     }
 }

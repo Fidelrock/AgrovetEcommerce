@@ -1,92 +1,53 @@
 ﻿using Agrovet.Api.Contracts.Orders;
 using Agrovet.Application.DTOs.Orders;
+using OrderItemDtoApi = Agrovet.Api.Contracts.Orders.OrderItemDto;
 using Agrovet.Domain.Entities;
 using Agrovet.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
+namespace Agrovet.Api.Controllers;
 
 [ApiController]
 [Route("api/orders")]
 public class OrdersController : ControllerBase
 {
     private readonly AgrovetDbContext _context;
-    private readonly ILogger<OrdersController> _logger;
 
-    // Add logger for debugging
-    public OrdersController(AgrovetDbContext context, ILogger<OrdersController> logger)
+    public OrdersController(AgrovetDbContext context)
     {
         _context = context;
-        _logger = logger;
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var orders = await _context.Orders
-            .AsNoTracking()
-            .Include(o => o.Items)
-                .ThenInclude(i => i.Product)
-            .Select(o => new OrderDto(
-                o.Id,
-                o.TotalAmount,
-                o.Status.ToString(),
-                o.Items.Select(i => new OrderItemDto(
-                    i.ProductId,
-                    i.Product!.Name,
-                    i.Quantity,
-                    i.UnitPrice,
-                    i.GetTotal()
-                )).ToList()
-            ))
-            .ToListAsync();
-
-        return Ok(orders);
     }
 
     [HttpPost("checkout")]
-    public async Task<IActionResult> Checkout(CheckoutRequestDto request)
+    public async Task<IActionResult> Checkout([FromBody] CheckoutRequestDto request)
     {
-        using var tx = await _context.Database.BeginTransactionAsync();
+        if (request.Items.Count == 0)
+            return BadRequest("Order must contain at least one item.");
 
+        using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
-            // Validate request
-            if (request == null || request.Items == null || !request.Items.Any())
-                return BadRequest(new { error = "Invalid request or empty items" });
-
-            var order = new Order(request.CustomerId);
-
-            var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+            var productIds = request.Items.Select(i => i.ProductId).ToList();
             var products = await _context.Products
                 .Where(p => productIds.Contains(p.Id))
                 .ToListAsync();
 
-            // Validate all products exist
             if (products.Count != productIds.Count)
-            {
-                var foundIds = products.Select(p => p.Id).ToList();
-                var missingIds = productIds.Except(foundIds);
-                throw new InvalidOperationException($"Products not found: {string.Join(", ", missingIds)}");
-            }
+                return BadRequest("One or more products not found.");
+
+            var order = Order.Create();
 
             foreach (var item in request.Items)
             {
                 var product = products.Single(p => p.Id == item.ProductId);
-
-                _logger.LogInformation("Reducing stock for product {ProductId}: {CurrentStock} - {Quantity}",
-                    product.Id, product.StockQuantity, item.Quantity);
-
                 product.ReduceStock(item.Quantity);
 
-                // CRITICAL: Ensure EF tracks this change
-                _context.Entry(product).Property(p => p.StockQuantity).IsModified = true;
-
-                order.AddItem(product.Id, product.Price, item.Quantity);
+                // Call AddItem with the 3 required parameters
+                order.AddItem(product.Id, item.Quantity, product.Price);
             }
 
             _context.Orders.Add(order);
-
-            // Save both order and product stock changes
             await _context.SaveChangesAsync();
 
             order.Confirm();
@@ -94,27 +55,67 @@ public class OrdersController : ControllerBase
 
             await tx.CommitAsync();
 
-            _logger.LogInformation("Checkout successful. Order {OrderId} created with total {Total}",
-                order.Id, order.TotalAmount);
-
             return Ok(new
             {
                 orderId = order.Id,
                 total = order.TotalAmount,
-                message = "Order placed successfully"
+                status = order.Status.ToString()
             });
-        }
-        catch (InvalidOperationException ex)
-        {
-            await tx.RollbackAsync();
-            _logger.LogWarning(ex, "Business validation failed during checkout");
-            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
             await tx.RollbackAsync();
-            _logger.LogError(ex, "Checkout failed unexpectedly");
-            return StatusCode(500, new { error = "An unexpected error occurred during checkout" });
+            return BadRequest(new { error = ex.Message });
         }
+    }
+
+    // GET /api/orders
+    [HttpGet]
+    public async Task<ActionResult<List<OrderSummaryDto>>> GetOrders()
+    {
+        var orders = await _context.Orders
+            .AsNoTracking()
+            .OrderByDescending(o => o.CreatedAt)
+            .Select(o => new OrderSummaryDto
+            {
+                Id = o.Id,
+                TotalAmount = o.TotalAmount,
+                Status = o.Status.ToString(),
+                CreatedAt = o.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(orders);
+    }
+
+    // GET /api/orders/{id}
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<OrderDetailsDto>> GetOrderById(Guid id)
+    {
+        var order = await _context.Orders
+            .AsNoTracking()
+            .Include(o => o.Items)
+                .ThenInclude(i => i.Product)
+            .Where(o => o.Id == id)
+            .Select(o => new OrderDetailsDto
+            {
+                Id = o.Id,
+                TotalAmount = o.TotalAmount,
+                Status = o.Status.ToString(),
+                CreatedAt = o.CreatedAt,
+                Items = o.Items.Select(i => new OrderItemDtoApi // USE THE ALIAS
+                {
+                    ProductId = i.ProductId,
+                    ProductName = i.Product.Name,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (order is null)
+            return NotFound();
+
+        return Ok(order);
     }
 }

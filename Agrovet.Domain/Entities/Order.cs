@@ -12,7 +12,12 @@ public class Order : BaseEntity
     private readonly List<OrderItem> _items = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
 
-    private Order() { } // EF Core
+    private Order() { }
+
+    public static Order Create()
+    {
+        return new Order();
+    }
 
     public Order(Guid customerId)
     {
@@ -20,17 +25,27 @@ public class Order : BaseEntity
         Status = OrderStatus.Pending;
     }
 
-    public void AddItem(Guid productId, decimal unitPrice, int quantity)
+    public void AddItem(Guid productId, int quantity, decimal unitPrice)
     {
         if (Status != OrderStatus.Pending)
             throw new InvalidOperationException("Cannot modify order in its current state.");
 
-        var item = new OrderItem(Id,productId, quantity, unitPrice);
-        _items.Add(item);
+        var existingItem = _items.SingleOrDefault(i => i.ProductId == productId);
+
+        if (existingItem != null)
+        {
+            existingItem.UpdateQuantity(existingItem.Quantity + quantity);
+        }
+        else
+        {
+            var item = new OrderItem(productId, quantity, unitPrice);
+            _items.Add(item);
+        }
 
         RecalculateTotal();
         MarkUpdated();
     }
+
 
     public void Confirm()
     {

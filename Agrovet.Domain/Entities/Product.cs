@@ -7,7 +7,6 @@ public class Product : BaseEntity
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public string SKU { get; private set; } = string.Empty;
-
     public decimal Price { get; private set; }
     public int StockQuantity { get; private set; }
     public bool IsActive { get; private set; }
@@ -33,7 +32,6 @@ public class Product : BaseEntity
     {
         if (price <= 0)
             throw new ArgumentException("Price must be greater than zero.");
-
         if (stockQuantity < 0)
             throw new ArgumentException("Stock cannot be negative.");
 
@@ -48,11 +46,19 @@ public class Product : BaseEntity
 
     // ===== Domain behavior =====
 
+    public void AddMedia(ProductMedia media)
+    {
+        if (media == null)
+            throw new ArgumentNullException(nameof(media));
+
+        _media.Add(media);
+        MarkUpdated();
+    }
+
     public void ReduceStock(int quantity)
     {
         if (quantity <= 0)
             throw new InvalidOperationException("Invalid quantity.");
-
         if (StockQuantity < quantity)
             throw new InvalidOperationException("Insufficient stock.");
 

@@ -1,4 +1,4 @@
-﻿namespace Agrovet.Api.Contracts.Orders;
+﻿namespace Agrovet.Application.DTOs.Orders;
 
 public sealed class OrderItemDto
 {
@@ -6,5 +6,4 @@ public sealed class OrderItemDto
     public string ProductName { get; init; } = string.Empty;
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
-    public decimal LineTotal => Quantity * UnitPrice;
 }

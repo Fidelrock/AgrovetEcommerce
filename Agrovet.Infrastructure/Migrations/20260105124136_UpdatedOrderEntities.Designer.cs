@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Agrovet.Infrastructure.Migrations
 {
     [DbContext(typeof(AgrovetDbContext))]
-    [Migration("20260104193326_UpdatedOrderEntities")]
+    [Migration("20260105124136_UpdatedOrderEntities")]
     partial class UpdatedOrderEntities
     {
         /// <inheritdoc />

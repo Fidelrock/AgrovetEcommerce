@@ -1,4 +1,6 @@
 ﻿using Agrovet.Api.Contracts;
+using Agrovet.Application.DTOs.Products;
+using Agrovet.Application.DTOs.Categories;
 using Agrovet.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +17,6 @@ public class ProductsController : ControllerBase
     {
         _context = context;
     }
-
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
@@ -29,6 +30,8 @@ public class ProductsController : ControllerBase
         var query = _context.Products
             .AsNoTracking()
             .Include(p => p.Category)
+            .Include(p => p.Media)
+            .Where(p => p.IsActive)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -40,8 +43,7 @@ public class ProductsController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(categorySlug))
         {
-            query = query.Where(p =>
-                p.Category!.Slug == categorySlug);
+            query = query.Where(p => p.Category!.Slug == categorySlug);
         }
 
         var totalCount = await query.CountAsync();
@@ -50,18 +52,30 @@ public class ProductsController : ControllerBase
             .OrderBy(p => p.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(p => new ProductDto(
-    p.Id,
-    p.Name,
-    p.Description,
-    p.Price,
-    new CategoryDto(
-        p.Category!.Id,
-        p.Category.Name,
-        p.Category.Slug
-    )
-))
-
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                IsInStock = p.StockQuantity > 0,
+                Category = new CategoryDto
+                {
+                    Id = p.Category!.Id,
+                    Name = p.Category.Name,
+                    Slug = p.Category.Slug
+                },
+                Media = p.Media
+                    .OrderBy(m => m.DisplayOrder)
+                    .Select(m => new ProductMediaDto
+                    {
+                        Id = m.Id,
+                        Url = m.Url,
+                        MediaType = m.MediaType,
+                        DisplayOrder = m.DisplayOrder
+                    })
+                    .ToList()
+            })
             .ToListAsync();
 
         return Ok(new PagedResult<ProductDto>(
@@ -71,4 +85,5 @@ public class ProductsController : ControllerBase
             totalCount
         ));
     }
+
 }

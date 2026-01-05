@@ -5,13 +5,12 @@ namespace Agrovet.Domain.Entities;
 public class ProductMedia : BaseEntity
 {
     public Guid ProductId { get; private set; }
-    public Product Product { get; private set; }
-
-    public string Url { get; private set; }
-    public string MediaType { get; private set; } // image | video | model3d
+    public Product Product { get; private set; } = null!;
+    public string Url { get; private set; } = string.Empty;
+    public string MediaType { get; private set; } = string.Empty;
     public int DisplayOrder { get; private set; }
 
-    private ProductMedia() { }
+    private ProductMedia() { } // EF Core
 
     public ProductMedia(Guid productId, string url, string mediaType, int displayOrder)
     {
@@ -20,4 +19,6 @@ public class ProductMedia : BaseEntity
         MediaType = mediaType;
         DisplayOrder = displayOrder;
     }
+
+    
 }

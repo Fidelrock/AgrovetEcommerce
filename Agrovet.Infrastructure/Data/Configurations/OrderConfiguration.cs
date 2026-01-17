@@ -14,8 +14,17 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .IsRequired()
             .HasMaxLength(50);
 
+        builder.Property(o => o.Subtotal)
+            .HasPrecision(18, 2);
+
+        builder.Property(o => o.ShippingCost)
+            .HasPrecision(18, 2);
+
         builder.Property(o => o.TotalAmount)
             .HasPrecision(18, 2);
+
+        builder.Property(o => o.TrackingNumber)
+            .HasMaxLength(100);
 
         builder.HasMany(o => o.Items)
             .WithOne()

@@ -4,6 +4,7 @@ using Agrovet.Application.DTOs.Categories;
 using Agrovet.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ProductDtoApp = Agrovet.Application.DTOs.Products.ProductDto;
 
 namespace Agrovet.Api.Controllers;
 
@@ -52,7 +53,7 @@ public class ProductsController : ControllerBase
             .OrderBy(p => p.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(p => new ProductDto
+            .Select(p => new ProductDtoApp
             {
                 Id = p.Id,
                 Name = p.Name,
@@ -78,7 +79,7 @@ public class ProductsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(new PagedResult<ProductDto>(
+        return Ok(new PagedResult<ProductDtoApp>(
             products,
             page,
             pageSize,

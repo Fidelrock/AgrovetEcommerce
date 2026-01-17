@@ -1,0 +1,26 @@
+using Agrovet.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Agrovet.Infrastructure.Data.Configurations;
+
+public class CartConfiguration : IEntityTypeConfiguration<Cart>
+{
+    public void Configure(EntityTypeBuilder<Cart> builder)
+    {
+        builder.HasKey(c => c.Id);
+
+        builder.HasOne(c => c.Customer)
+            .WithMany()
+            .HasForeignKey(c => c.CustomerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(c => c.Items)
+            .WithOne(ci => ci.Cart)
+            .HasForeignKey(ci => ci.CartId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(c => c.CustomerId)
+            .IsUnique();
+    }
+}

@@ -15,6 +15,10 @@ public class AgrovetDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Address> Addresses => Set<Address>();
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,5 +43,12 @@ public class AgrovetDbContext : DbContext
         modelBuilder.Entity<Order>()
             .Property(o => o.Status)
             .HasConversion<int>();
+
+        // Order → ShippingAddress
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.ShippingAddress)
+            .WithMany()
+            .HasForeignKey(o => o.ShippingAddressId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

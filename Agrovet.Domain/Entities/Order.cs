@@ -6,8 +6,19 @@ namespace Agrovet.Domain.Entities;
 public class Order : BaseEntity
 {
     public Guid CustomerId { get; private set; }
+    public Customer Customer { get; private set; } = null!;
+
+    public Guid? ShippingAddressId { get; private set; }
+    public Address? ShippingAddress { get; private set; }
+
+    public decimal Subtotal { get; private set; }
+    public decimal ShippingCost { get; private set; }
     public decimal TotalAmount { get; private set; }
     public OrderStatus Status { get; private set; } = OrderStatus.Pending;
+
+    public string? TrackingNumber { get; private set; }
+    public DateTime? ShippedAt { get; private set; }
+    public DateTime? DeliveredAt { get; private set; }
 
     private readonly List<OrderItem> _items = new();
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
@@ -23,6 +34,27 @@ public class Order : BaseEntity
     {
         CustomerId = customerId;
         Status = OrderStatus.Pending;
+        ShippingCost = 0;
+    }
+
+    public void SetShippingDetails(Guid addressId, decimal shippingCost)
+    {
+        if (shippingCost < 0)
+            throw new ArgumentException("Shipping cost cannot be negative.");
+
+        ShippingAddressId = addressId;
+        ShippingCost = shippingCost;
+        RecalculateTotal();
+        MarkUpdated();
+    }
+
+    public void UpdateTrackingNumber(string trackingNumber)
+    {
+        if (string.IsNullOrWhiteSpace(trackingNumber))
+            throw new ArgumentException("Tracking number is required.");
+
+        TrackingNumber = trackingNumber;
+        MarkUpdated();
     }
 
     public void AddItem(Guid productId, int quantity, decimal unitPrice)
@@ -65,6 +97,7 @@ public class Order : BaseEntity
             throw new InvalidOperationException("Only confirmed orders can be shipped.");
 
         Status = OrderStatus.Shipped;
+        ShippedAt = DateTime.UtcNow;
         MarkUpdated();
     }
 
@@ -74,6 +107,7 @@ public class Order : BaseEntity
             throw new InvalidOperationException("Only shipped orders can be delivered.");
 
         Status = OrderStatus.Delivered;
+        DeliveredAt = DateTime.UtcNow;
         MarkUpdated();
     }
 
@@ -88,6 +122,7 @@ public class Order : BaseEntity
 
     private void RecalculateTotal()
     {
-        TotalAmount = _items.Sum(i => i.UnitPrice * i.Quantity);
+        Subtotal = _items.Sum(i => i.UnitPrice * i.Quantity);
+        TotalAmount = Subtotal + ShippingCost;
     }
 }

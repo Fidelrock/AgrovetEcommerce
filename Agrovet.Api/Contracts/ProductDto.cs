@@ -1,4 +1,6 @@
-﻿using Agrovet.Api.Contracts;
+﻿using Agrovet.Api.Contracts.Categories;
+
+namespace Agrovet.Api.Contracts;
 
 public record ProductDto(
     Guid Id,
